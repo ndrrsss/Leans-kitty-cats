@@ -153,10 +153,10 @@
   </style>
 </head>
 <body>
-  <h1>Cat Snack Dash</h1>
+  <h1>LEAN KITTY CAT YUMMERZ</h1>
   <div class="subtitle">
-    Help the white cat and black cat collect the right food. Your movement choices decide how much they eat.
-    Feed both cats before the 5-minute timer ends.
+    Help leans cat collect the right food. Move your fat fingers to decide how much they eat.
+    The cats are kinda fat so they only have 5 min to eat.
   </div>
 
   <div class="wrap">
@@ -179,7 +179,7 @@
           White Cat = <b>W A S D</b> &nbsp; | &nbsp;
           Black Cat = <b>Arrow Keys</b><br />
           White cat likes fish and milk. Black cat likes chicken and treats.<br />
-          Avoid yucky food. The first cat to touch a snack decides who eats it.
+          Avoid not very yummerz food.
         </div>
       </div>
     </div>
@@ -396,13 +396,13 @@
     function finishGame() {
       running = false;
       if (whiteCat.score >= WORLD.goal && blackCat.score >= WORLD.goal) {
-        winnerText = 'You fed both cats. Perfect snack ending!';
+        winnerText = 'You fed both cats. Great now they are too fat!';
       } else if (whiteCat.score > blackCat.score) {
-        winnerText = 'White cat ate more snacks this round.';
+        winnerText = 'White cat ate more snacks this round. Greedy much...';
       } else if (blackCat.score > whiteCat.score) {
-        winnerText = 'Black cat ate more snacks this round.';
+        winnerText = 'Black cat ate more snacks this round. This is what I call gluttony';
       } else {
-        winnerText = 'It is a tie. Both cats want one more treat.';
+        winnerText = 'It is a tie. Obese babies.';
       }
     }
 
@@ -562,9 +562,9 @@
         ctx.fillStyle = '#37284c';
         ctx.font = 'bold 30px Arial';
         ctx.textAlign = 'center';
-        ctx.fillText('Press Start to Begin Cat Snack Dash', canvas.width / 2, 220);
+        ctx.fillText('Press Start to Begin Leans Kitty Yummerz', canvas.width / 2, 220);
         ctx.font = '20px Arial';
-        ctx.fillText('Move the cats to choose their food for the next 5 minutes.', canvas.width / 2, 265);
+        ctx.fillText('Move the greedy glutton fat cats to choose their food for the next 5 minutes.', canvas.width / 2, 265);
         ctx.fillText('White cat loves fish + milk. Black cat loves chicken + treats.', canvas.width / 2, 300);
         ctx.fillText('Bad snacks lower points. Try to get both cats to 25.', canvas.width / 2, 335);
       }
