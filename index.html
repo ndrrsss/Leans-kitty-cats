@@ -1,0 +1,647 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Cat Snack Dash</title>
+  <style>
+    :root {
+      --bg1: #ffeef6;
+      --bg2: #fff8e8;
+      --panel: rgba(255,255,255,0.86);
+      --border: #3f2f56;
+      --text: #37284c;
+      --grass: #bde7a3;
+      --grass-dark: #8dc676;
+      --shadow: rgba(63, 47, 86, 0.18);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: Arial, Helvetica, sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at top, #fffdfd 0%, var(--bg1) 35%, var(--bg2) 100%);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 18px;
+    }
+
+    h1 {
+      margin: 6px 0 8px;
+      font-size: clamp(26px, 4vw, 40px);
+      text-align: center;
+    }
+
+    .subtitle {
+      text-align: center;
+      max-width: 860px;
+      margin-bottom: 14px;
+      line-height: 1.45;
+      font-size: 15px;
+    }
+
+    .wrap {
+      width: min(960px, 100%);
+      display: grid;
+      gap: 12px;
+    }
+
+    .hud {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .card {
+      background: var(--panel);
+      border: 3px solid var(--border);
+      border-radius: 18px;
+      padding: 12px 14px;
+      box-shadow: 0 10px 24px var(--shadow);
+    }
+
+    .card strong {
+      display: block;
+      margin-bottom: 4px;
+      font-size: 13px;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+
+    .value {
+      font-size: clamp(20px, 3vw, 30px);
+      font-weight: 700;
+    }
+
+    .game-shell {
+      background: var(--panel);
+      border: 3px solid var(--border);
+      border-radius: 24px;
+      padding: 16px;
+      box-shadow: 0 14px 30px var(--shadow);
+    }
+
+    canvas {
+      width: 100%;
+      max-width: 100%;
+      aspect-ratio: 16 / 9;
+      display: block;
+      background: linear-gradient(#cfefff 0 62%, #c9f2b7 62% 100%);
+      border: 4px solid var(--border);
+      border-radius: 18px;
+      image-rendering: pixelated;
+      image-rendering: crisp-edges;
+    }
+
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      gap: 12px;
+      margin-top: 12px;
+      align-items: center;
+    }
+
+    .buttons {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    button {
+      border: 3px solid var(--border);
+      background: #fff;
+      color: var(--text);
+      border-radius: 999px;
+      padding: 10px 16px;
+      font-weight: 700;
+      cursor: pointer;
+      box-shadow: 0 6px 0 #d7cde5;
+    }
+
+    button:active {
+      transform: translateY(2px);
+      box-shadow: 0 4px 0 #d7cde5;
+    }
+
+    .help {
+      font-size: 14px;
+      line-height: 1.45;
+    }
+
+    .footer-note {
+      font-size: 13px;
+      opacity: 0.86;
+      text-align: center;
+      margin-top: 4px;
+    }
+
+    @media (max-width: 760px) {
+      .hud {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+      .controls {
+        flex-direction: column;
+        align-items: stretch;
+      }
+    }
+  </style>
+</head>
+<body>
+  <h1>Cat Snack Dash</h1>
+  <div class="subtitle">
+    Help the white cat and black cat collect the right food. Your movement choices decide how much they eat.
+    Feed both cats before the 5-minute timer ends.
+  </div>
+
+  <div class="wrap">
+    <div class="hud">
+      <div class="card"><strong>Time Left</strong><div class="value" id="time">05:00</div></div>
+      <div class="card"><strong>White Cat</strong><div class="value" id="whiteScore">0</div></div>
+      <div class="card"><strong>Black Cat</strong><div class="value" id="blackScore">0</div></div>
+      <div class="card"><strong>Round Goal</strong><div class="value" id="goal">25</div></div>
+    </div>
+
+    <div class="game-shell">
+      <canvas id="game" width="960" height="540"></canvas>
+      <div class="controls">
+        <div class="buttons">
+          <button id="startBtn">Start / Restart</button>
+          <button id="pauseBtn">Pause</button>
+        </div>
+        <div class="help">
+          <strong>Controls:</strong>
+          White Cat = <b>W A S D</b> &nbsp; | &nbsp;
+          Black Cat = <b>Arrow Keys</b><br />
+          White cat likes fish and milk. Black cat likes chicken and treats.<br />
+          Avoid yucky food. The first cat to touch a snack decides who eats it.
+        </div>
+      </div>
+    </div>
+
+    <div class="footer-note">
+      Save this as <b>index.html</b>, upload it to your GitHub repository, then enable GitHub Pages.
+    </div>
+  </div>
+
+  <script>
+    const canvas = document.getElementById('game');
+    const ctx = canvas.getContext('2d');
+
+    const timeEl = document.getElementById('time');
+    const whiteScoreEl = document.getElementById('whiteScore');
+    const blackScoreEl = document.getElementById('blackScore');
+    const goalEl = document.getElementById('goal');
+    const startBtn = document.getElementById('startBtn');
+    const pauseBtn = document.getElementById('pauseBtn');
+
+    const WORLD = {
+      width: canvas.width,
+      height: canvas.height,
+      groundY: 340,
+      goal: 25,
+      duration: 5 * 60,
+    };
+
+    const keys = {};
+    let foods = [];
+    let particles = [];
+    let running = false;
+    let paused = false;
+    let lastTime = 0;
+    let spawnTimer = 0;
+    let remaining = WORLD.duration;
+    let winnerText = '';
+
+    const whiteCat = createCat('white', 180, 395, '#ffffff', '#111111');
+    const blackCat = createCat('black', 740, 395, '#222222', '#f8f8f8');
+
+    function createCat(name, x, y, bodyColor, eyeColor) {
+      return {
+        name,
+        x,
+        y,
+        width: 48,
+        height: 44,
+        speed: 180,
+        bodyColor,
+        eyeColor,
+        score: 0,
+        blink: 0,
+        facing: 1,
+      };
+    }
+
+    const foodTypes = [
+      { type: 'fish', points: 2, target: 'white', bad: false },
+      { type: 'milk', points: 3, target: 'white', bad: false },
+      { type: 'chicken', points: 2, target: 'black', bad: false },
+      { type: 'treat', points: 3, target: 'black', bad: false },
+      { type: 'pepper', points: -2, target: 'both', bad: true },
+      { type: 'lemon', points: -1, target: 'both', bad: true },
+    ];
+
+    function resetGame() {
+      whiteCat.x = 180;
+      whiteCat.y = 395;
+      whiteCat.score = 0;
+      blackCat.x = 740;
+      blackCat.y = 395;
+      blackCat.score = 0;
+      foods = [];
+      particles = [];
+      remaining = WORLD.duration;
+      spawnTimer = 0;
+      winnerText = '';
+      paused = false;
+      running = true;
+      updateHud();
+    }
+
+    function updateHud() {
+      whiteScoreEl.textContent = whiteCat.score;
+      blackScoreEl.textContent = blackCat.score;
+      goalEl.textContent = WORLD.goal;
+      const mins = Math.floor(remaining / 60);
+      const secs = Math.floor(remaining % 60);
+      timeEl.textContent = `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+    }
+
+    function spawnFood() {
+      const pick = foodTypes[Math.floor(Math.random() * foodTypes.length)];
+      foods.push({
+        ...pick,
+        x: 80 + Math.random() * (WORLD.width - 160),
+        y: 120 + Math.random() * 160,
+        size: 24,
+        vy: 0,
+        grounded: false,
+        drift: (Math.random() - 0.5) * 18,
+      });
+    }
+
+    function addParticles(x, y, color) {
+      for (let i = 0; i < 8; i++) {
+        particles.push({
+          x,
+          y,
+          vx: (Math.random() - 0.5) * 140,
+          vy: -40 - Math.random() * 110,
+          life: 0.7 + Math.random() * 0.5,
+          color,
+        });
+      }
+    }
+
+    function clamp(value, min, max) {
+      return Math.max(min, Math.min(max, value));
+    }
+
+    function updateCat(cat, dt, controls) {
+      let dx = 0;
+      let dy = 0;
+
+      if (keys[controls.left]) dx -= 1;
+      if (keys[controls.right]) dx += 1;
+      if (keys[controls.up]) dy -= 1;
+      if (keys[controls.down]) dy += 1;
+
+      const mag = Math.hypot(dx, dy) || 1;
+      dx /= mag;
+      dy /= mag;
+
+      cat.x += dx * cat.speed * dt;
+      cat.y += dy * cat.speed * dt;
+
+      if (dx !== 0) cat.facing = dx > 0 ? 1 : -1;
+
+      cat.x = clamp(cat.x, 20, WORLD.width - cat.width - 20);
+      cat.y = clamp(cat.y, WORLD.groundY, WORLD.height - cat.height - 22);
+      cat.blink += dt;
+    }
+
+    function intersects(cat, food) {
+      return (
+        cat.x < food.x + food.size &&
+        cat.x + cat.width > food.x &&
+        cat.y < food.y + food.size &&
+        cat.y + cat.height > food.y
+      );
+    }
+
+    function resolveFoodHit(cat, food) {
+      if (food.bad) {
+        cat.score = Math.max(0, cat.score + food.points);
+        addParticles(food.x + 12, food.y + 12, '#ff8ea1');
+        return;
+      }
+
+      if (food.target === cat.name) {
+        cat.score += food.points;
+        addParticles(food.x + 12, food.y + 12, '#ffd966');
+      } else {
+        cat.score = Math.max(0, cat.score - 1);
+        addParticles(food.x + 12, food.y + 12, '#c9b6ff');
+      }
+    }
+
+    function updateFoods(dt) {
+      for (const food of foods) {
+        if (!food.grounded) {
+          food.vy += 280 * dt;
+          food.y += food.vy * dt;
+          food.x += food.drift * dt;
+          if (food.y >= WORLD.groundY + 8) {
+            food.y = WORLD.groundY + 8;
+            food.vy = 0;
+            food.grounded = true;
+          }
+        }
+      }
+
+      foods = foods.filter(food => {
+        const whiteHit = intersects(whiteCat, food);
+        const blackHit = intersects(blackCat, food);
+
+        if (whiteHit || blackHit) {
+          let eater = whiteHit ? whiteCat : blackCat;
+          if (whiteHit && blackHit) {
+            const d1 = Math.abs((whiteCat.x + 24) - food.x);
+            const d2 = Math.abs((blackCat.x + 24) - food.x);
+            eater = d1 <= d2 ? whiteCat : blackCat;
+          }
+          resolveFoodHit(eater, food);
+          updateHud();
+          return false;
+        }
+        return true;
+      });
+    }
+
+    function updateParticles(dt) {
+      particles = particles.filter(p => {
+        p.life -= dt;
+        p.x += p.vx * dt;
+        p.y += p.vy * dt;
+        p.vy += 220 * dt;
+        return p.life > 0;
+      });
+    }
+
+    function finishGame() {
+      running = false;
+      if (whiteCat.score >= WORLD.goal && blackCat.score >= WORLD.goal) {
+        winnerText = 'You fed both cats. Perfect snack ending!';
+      } else if (whiteCat.score > blackCat.score) {
+        winnerText = 'White cat ate more snacks this round.';
+      } else if (blackCat.score > whiteCat.score) {
+        winnerText = 'Black cat ate more snacks this round.';
+      } else {
+        winnerText = 'It is a tie. Both cats want one more treat.';
+      }
+    }
+
+    function update(dt) {
+      if (!running || paused) return;
+
+      remaining -= dt;
+      if (remaining <= 0) {
+        remaining = 0;
+        updateHud();
+        finishGame();
+        return;
+      }
+
+      spawnTimer -= dt;
+      if (spawnTimer <= 0) {
+        spawnFood();
+        if (Math.random() < 0.45) spawnFood();
+        spawnTimer = 0.85 + Math.random() * 0.65;
+      }
+
+      updateCat(whiteCat, dt, { up: 'w', down: 's', left: 'a', right: 'd' });
+      updateCat(blackCat, dt, { up: 'ArrowUp', down: 'ArrowDown', left: 'ArrowLeft', right: 'ArrowRight' });
+      updateFoods(dt);
+      updateParticles(dt);
+      updateHud();
+    }
+
+    function drawPixelRect(x, y, w, h, color) {
+      ctx.fillStyle = color;
+      ctx.fillRect(Math.round(x), Math.round(y), Math.round(w), Math.round(h));
+    }
+
+    function drawBackground() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      drawPixelRect(0, 0, canvas.width, 340, '#cff1ff');
+      drawPixelRect(0, 340, canvas.width, 200, '#bfe8a3');
+      drawPixelRect(0, 390, canvas.width, 150, '#96d175');
+
+      for (let i = 0; i < canvas.width; i += 56) {
+        drawPixelRect(i, 336, 28, 8, '#8bc56a');
+      }
+
+      drawCloud(120, 70, 1.1);
+      drawCloud(350, 110, 0.8);
+      drawCloud(700, 80, 1.15);
+      drawBush(70, 320, 1);
+      drawBush(820, 322, 1.1);
+      drawBush(500, 326, 0.85);
+    }
+
+    function drawCloud(x, y, s) {
+      const c = '#ffffff';
+      drawPixelRect(x, y, 40 * s, 20 * s, c);
+      drawPixelRect(x + 12 * s, y - 10 * s, 24 * s, 20 * s, c);
+      drawPixelRect(x + 28 * s, y + 2 * s, 26 * s, 18 * s, c);
+    }
+
+    function drawBush(x, y, s) {
+      drawPixelRect(x, y, 56 * s, 20 * s, '#6eb057');
+      drawPixelRect(x + 10 * s, y - 12 * s, 18 * s, 12 * s, '#6eb057');
+      drawPixelRect(x + 24 * s, y - 18 * s, 18 * s, 18 * s, '#6eb057');
+      drawPixelRect(x + 38 * s, y - 10 * s, 16 * s, 10 * s, '#6eb057');
+    }
+
+    function drawCat(cat) {
+      const x = Math.round(cat.x);
+      const y = Math.round(cat.y);
+      const body = cat.bodyColor;
+      const outline = '#46345f';
+      const blush = cat.name === 'white' ? '#ffc9d8' : '#b48ad8';
+
+      drawPixelRect(x + 10, y + 10, 28, 24, outline);
+      drawPixelRect(x + 12, y + 12, 24, 20, body);
+
+      drawPixelRect(x + 6, y + 2, 14, 16, outline);
+      drawPixelRect(x + 28, y + 2, 14, 16, outline);
+      drawPixelRect(x + 8, y + 4, 10, 12, body);
+      drawPixelRect(x + 30, y + 4, 10, 12, body);
+
+      drawPixelRect(x + 16, y + 18, 4, 4, cat.eyeColor);
+      drawPixelRect(x + 28, y + 18, 4, 4, cat.eyeColor);
+      if (Math.floor(cat.blink * 1.8) % 8 === 0) {
+        drawPixelRect(x + 16, y + 19, 4, 2, outline);
+        drawPixelRect(x + 28, y + 19, 4, 2, outline);
+      }
+
+      drawPixelRect(x + 21, y + 24, 6, 4, '#ff96a9');
+      drawPixelRect(x + 14, y + 24, 4, 4, blush);
+      drawPixelRect(x + 30, y + 24, 4, 4, blush);
+
+      drawPixelRect(x + 6, y + 32, 8, 8, outline);
+      drawPixelRect(x + 16, y + 32, 8, 8, outline);
+      drawPixelRect(x + 28, y + 32, 8, 8, outline);
+      drawPixelRect(x + 38, y + 32, 8, 8, outline);
+
+      drawPixelRect(x + 44, y + 16, 12, 6, outline);
+      drawPixelRect(x + 46, y + 16, 10, 4, body);
+      drawPixelRect(x + 54, y + 10, 6, 6, outline);
+      drawPixelRect(x + 56, y + 10, 4, 4, body);
+
+      if (cat.facing < 0) {
+        ctx.save();
+        ctx.translate(x + 24, 0);
+        ctx.scale(-1, 1);
+        ctx.restore();
+      }
+    }
+
+    function drawFood(food) {
+      const x = Math.round(food.x);
+      const y = Math.round(food.y);
+      switch (food.type) {
+        case 'fish':
+          drawPixelRect(x + 4, y + 8, 14, 8, '#7ca9ff');
+          drawPixelRect(x, y + 10, 6, 4, '#7ca9ff');
+          drawPixelRect(x + 18, y + 10, 6, 4, '#7ca9ff');
+          drawPixelRect(x + 16, y + 6, 4, 4, '#5c85db');
+          break;
+        case 'milk':
+          drawPixelRect(x + 6, y + 4, 12, 18, '#ffffff');
+          drawPixelRect(x + 8, y + 2, 8, 4, '#d6ecff');
+          break;
+        case 'chicken':
+          drawPixelRect(x + 6, y + 8, 14, 10, '#f2b16f');
+          drawPixelRect(x + 18, y + 10, 6, 6, '#fff1cf');
+          drawPixelRect(x + 20, y + 8, 2, 2, '#fff1cf');
+          break;
+        case 'treat':
+          drawPixelRect(x + 8, y + 4, 8, 16, '#8a5c3b');
+          drawPixelRect(x + 4, y + 8, 16, 8, '#b1784d');
+          break;
+        case 'pepper':
+          drawPixelRect(x + 8, y + 4, 10, 16, '#ff5a72');
+          drawPixelRect(x + 10, y + 2, 6, 4, '#4f9e58');
+          break;
+        case 'lemon':
+          drawPixelRect(x + 6, y + 8, 14, 10, '#ffe16b');
+          drawPixelRect(x + 10, y + 4, 6, 4, '#9dd96f');
+          break;
+      }
+    }
+
+    function drawParticles() {
+      for (const p of particles) {
+        ctx.globalAlpha = Math.max(0, p.life);
+        drawPixelRect(p.x, p.y, 4, 4, p.color);
+      }
+      ctx.globalAlpha = 1;
+    }
+
+    function drawOverlay() {
+      if (!running && remaining === WORLD.duration) {
+        ctx.fillStyle = 'rgba(255,255,255,0.72)';
+        ctx.fillRect(150, 150, 660, 220);
+        ctx.fillStyle = '#37284c';
+        ctx.font = 'bold 30px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText('Press Start to Begin Cat Snack Dash', canvas.width / 2, 220);
+        ctx.font = '20px Arial';
+        ctx.fillText('Move the cats to choose their food for the next 5 minutes.', canvas.width / 2, 265);
+        ctx.fillText('White cat loves fish + milk. Black cat loves chicken + treats.', canvas.width / 2, 300);
+        ctx.fillText('Bad snacks lower points. Try to get both cats to 25.', canvas.width / 2, 335);
+      }
+
+      if (paused) {
+        ctx.fillStyle = 'rgba(54, 39, 74, 0.45)';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 42px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText('Paused', canvas.width / 2, 260);
+      }
+
+      if (!running && remaining === 0) {
+        ctx.fillStyle = 'rgba(255,255,255,0.8)';
+        ctx.fillRect(170, 150, 620, 220);
+        ctx.fillStyle = '#37284c';
+        ctx.font = 'bold 34px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText('Time Up!', canvas.width / 2, 220);
+        ctx.font = '22px Arial';
+        ctx.fillText(winnerText, canvas.width / 2, 270);
+        ctx.fillText('Press Start / Restart to play another 5-minute round.', canvas.width / 2, 315);
+      }
+    }
+
+    function drawLabels() {
+      ctx.fillStyle = '#37284c';
+      ctx.font = 'bold 18px Arial';
+      ctx.textAlign = 'left';
+      ctx.fillText('White Cat', whiteCat.x - 4, whiteCat.y - 16);
+      ctx.fillText('Black Cat', blackCat.x - 4, blackCat.y - 16);
+    }
+
+    function draw() {
+      drawBackground();
+      foods.forEach(drawFood);
+      drawCat(whiteCat);
+      drawCat(blackCat);
+      drawParticles();
+      drawLabels();
+      drawOverlay();
+    }
+
+    function gameLoop(timestamp) {
+      if (!lastTime) lastTime = timestamp;
+      const dt = Math.min(0.033, (timestamp - lastTime) / 1000);
+      lastTime = timestamp;
+      update(dt);
+      draw();
+      requestAnimationFrame(gameLoop);
+    }
+
+    window.addEventListener('keydown', (e) => {
+      keys[e.key] = true;
+      if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", " "].includes(e.key)) {
+        e.preventDefault();
+      }
+    });
+
+    window.addEventListener('keyup', (e) => {
+      keys[e.key] = false;
+    });
+
+    startBtn.addEventListener('click', () => {
+      resetGame();
+    });
+
+    pauseBtn.addEventListener('click', () => {
+      if (!running) return;
+      paused = !paused;
+      pauseBtn.textContent = paused ? 'Resume' : 'Pause';
+    });
+
+    updateHud();
+    draw();
+    requestAnimationFrame(gameLoop);
+  </script>
+</body>
+</html>
